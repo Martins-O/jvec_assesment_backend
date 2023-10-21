@@ -116,3 +116,31 @@ export const login = async (req, res) => {
   }
 };
 
+
+export const logout = async (req, res) => {
+  try {
+    // Get the user's ID from the JWT token in the request header
+    const userId = req.user.id; // Assuming you have middleware to decode the JWT and store user information in req.user
+
+    // Find the user by their ID and update the tokens to remove the current token
+    const user = await CustomerModel.findByIdAndUpdate(
+      userId,
+      {
+        $pull: {
+          tokens: {
+            token: req.token
+          }
+        }
+      }
+    );
+
+    if (!user) {
+      return res.status(404).json({ status: 'Failed', message: 'User not found' });
+    }
+
+    res.status(200).json({ status: 'Success', message: 'User logged out successfully' });
+  }catch (error) {
+      res.status(500).json({ status: 'Failed', message: 'Internal server error' });
+  }
+
+};
