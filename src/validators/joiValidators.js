@@ -2,7 +2,7 @@ import joi from 'joi';
 
 export const customerRegDataValidation = (data) => {
   const schema = joi.object({
-    full_name: joi.string().trim().required(),
+    username: joi.string().trim().required(),
 
     email: joi.string().regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)
       .required()
@@ -27,11 +27,7 @@ export const customerRegDataValidation = (data) => {
 
 export const loginValidator = (data) => {
   const schema = joi.object({
-      email: joi.string().regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)
-      .required()
-      .messages({
-        'string.pattern.base': 'Email is not a valid email pattern'
-      }),
+    username: joi.string().trim().required(),
     password: joi.string().min(8).required(),
   }).strict();
 

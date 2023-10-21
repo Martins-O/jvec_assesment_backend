@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import morgan from 'morgan'
 import cors from 'cors';
 import { config } from './src/config/index.js';
+import {customRouter} from "./src/routes/customerRoutes.js";
 
 
 dotenv.config();
@@ -20,6 +21,7 @@ app.use(json());
 app.use(morgan('tiny'))
 app.use(cors());
 
+app.use('/api/v1/customer', customRouter)
 
 
 app.listen(PORT, () => {
