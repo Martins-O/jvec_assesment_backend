@@ -1,14 +1,12 @@
 import {config} from "dotenv";
 import bcrypt from "bcrypt";
-import validationResult from 'express-validator';
-import {generateToken} from "../utils/jwt.js";
+import {generateToken, verifyToken} from "../utils/jwt.js";
 import {customerRegDataValidation, loginValidator} from "../validators/joiValidators.js";
 import {CustomerModel} from "../models/customerModel.js";
 
 
 export const createAccount = async (req, res) => {
   try {
-    // Validate the request body
     const { error } = customerRegDataValidation(req.body);
     if (error) {
       return res.status(400).json({
@@ -19,7 +17,6 @@ export const createAccount = async (req, res) => {
 
     const { username, email, phoneNumber, password } = req.body;
 
-    // Check if the email already exists
     const emailExists = await CustomerModel.findOne({ email });
     if (emailExists) {
       return res.status(400).json({
@@ -28,11 +25,9 @@ export const createAccount = async (req, res) => {
       });
     }
 
-    // Hash the password
-    const saltRounds = +config.bcrypt_password_salt_round; // Use your salt value from the config
+    const saltRounds = +config.bcrypt_password_salt_round;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Create a new customer
     const customerCreated = await CustomerModel.create({
       username,
       email,
@@ -57,13 +52,11 @@ export const createAccount = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    // Validate the request body
     const { error } = loginValidator(req.body);
     if (error) return res.status(400).send(error.details[0].message)
 
     const { username, password } = req.body;
 
-    // Check if the user exists
     const userExists = await CustomerModel.findOne({ username });
     if (!userExists) {
       return res.status(400).json({
@@ -72,7 +65,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check if the password is correct
     const passwordMatch = await bcrypt.compare(password, userExists.password);
     if (!passwordMatch) {
       return res.status(400).json({
@@ -81,25 +73,21 @@ export const login = async (req, res) => {
       });
     }
 
-    // Generate a new token
     const token = generateToken(userExists);
 
-    // Filter and clean up old tokens
-    const oldTokens = (userExists.tokens || []).filter((tokenInfo) => {
+    const oldTokens = (userExists.access_token || []).filter((tokenInfo) => {
       const timeDiff = (Date.now() - parseInt(tokenInfo.signedAt)) / 1000;
       return timeDiff < 86400;
     });
 
-    // Update user with the new token
     await CustomerModel.findByIdAndUpdate(
       userExists._id,
       {
-        tokens: [...oldTokens, { token, signedAt: Date.now().toString() }],
+        access_token: [...oldTokens, { token, signedAt: Date.now().toString() }],
       },
       { runValidators: true }
     );
 
-    // Respond with success
     res
       .status(200)
       .header('auth_token', token)
@@ -116,31 +104,68 @@ export const login = async (req, res) => {
   }
 };
 
-
 export const logout = async (req, res) => {
   try {
-    // Get the user's ID from the JWT token in the request header
-    const userId = req.user.id; // Assuming you have middleware to decode the JWT and store user information in req.user
+    const token = req.header('auth_token');
 
-    // Find the user by their ID and update the tokens to remove the current token
-    const user = await CustomerModel.findByIdAndUpdate(
-      userId,
-      {
-        $pull: {
-          tokens: {
-            token: req.token
-          }
-        }
-      }
-    );
-
-    if (!user) {
-      return res.status(404).json({ status: 'Failed', message: 'User not found' });
+    if (!token) {
+      return res.status(401).json({
+        status: 'Failed',
+        message: 'Unauthorized. No token provided.',
+      });
     }
 
-    res.status(200).json({ status: 'Success', message: 'User logged out successfully' });
-  }catch (error) {
-      res.status(500).json({ status: 'Failed', message: 'Internal server error' });
-  }
+    const decoded = verifyToken(token);
 
+    const user = await CustomerModel.findById(decoded._id);
+    console.log(user)
+    if (!user) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: 'User not found.',
+      });
+    }
+
+    user.access_token = user.access_token.filter((tokenInfo) => tokenInfo.token !== token);
+
+    await user.save();
+
+    res.status(200).json({
+      status: 'Success',
+      message: 'User logged out successfully',
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: 'Failed',
+      message: error.message,
+    });
+  }
 };
+
+
+
+// export const logout = async (req, res) => {
+//   try {
+//     const userId = req.params.id;
+//
+//     const user = await CustomerModel.findByIdAndUpdate(
+//       userId,
+//       {
+//         $pull: {
+//           tokens: {
+//             token: req.access_token
+//           }
+//         }
+//       }
+//     );
+//
+//     if (!user) {
+//       return res.status(404).json({ status: 'Failed', message: 'User not found' });
+//     }
+//
+//     res.status(200).json({ status: 'Success', message: 'User logged out successfully' });
+//   }catch (error) {
+//       res.status(500).json({ status: 'Failed', message: 'Internal server error' });
+//   }
+//
+// };

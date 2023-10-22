@@ -11,7 +11,7 @@ const ContactSchema = new mongoose.Schema({
         required: true
     },
 
-    phoneNumber: {
+    phone_number: {
         type: String,
         required: [true, 'Please enter phone number digits'],
         validators: {

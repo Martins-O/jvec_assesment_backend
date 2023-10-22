@@ -1,6 +1,6 @@
-import {CustomerModel} from "../models/contactModel.js";
 import {verifyToken} from "../utils/jwt.js";
 import {sendErrorResponse} from "../customError/error.js";
+import {CustomerModel} from "../models/customerModel.js";
 
 export const customerAuthJwt = async (req, res, next) => {
     try {

@@ -5,6 +5,7 @@ import morgan from 'morgan'
 import cors from 'cors';
 import { config } from './src/config/index.js';
 import {customRouter} from "./src/routes/customerRoutes.js";
+import {contactRouter} from "./src/routes/contactRoutes.js";
 
 
 dotenv.config();
@@ -22,6 +23,7 @@ app.use(morgan('tiny'))
 app.use(cors());
 
 app.use('/api/v1/customer', customRouter)
+app.use('/api/v1/contact', contactRouter)
 
 
 app.listen(PORT, () => {
